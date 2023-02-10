@@ -29,10 +29,7 @@
     pip install pillow
     python -m pip install --upgrade Pillow
     pip install sorl-thumbnail
-<<<<<<< HEAD
     pip install django-filter
-=======
->>>>>>> d44c210e6188c9379e4bd2ef3ad4166982ce2fda
 ```
 
 ### 4. Выполнить миграции:

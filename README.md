@@ -25,11 +25,6 @@
 ```
     python -m pip install --upgrade pip
     pip install -r requirements.txt
-    pip install djoser djangorestframework-simplejwt==4.7.2
-    pip install pillow
-    python -m pip install --upgrade Pillow
-    pip install sorl-thumbnail
-    pip install django-filter
 ```
 
 ### 4. Выполнить миграции:

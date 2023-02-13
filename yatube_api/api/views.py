@@ -1,54 +1,36 @@
-from django.core.exceptions import BadRequest, PermissionDenied
+from django.core.exceptions import BadRequest
 from django.shortcuts import get_object_or_404
 from posts.models import Comment, Follow, Group, Post, User
-from rest_framework import filters, mixins, viewsets
+from rest_framework import filters, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.throttling import ScopedRateThrottle
 
-from .permissions import OwnerOnly
+from .mixins import GetPostViewSet
+from .permissions import IsOwner, IsOwnerOrReadOnly
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
-from .throttling import WorkingHoursRateThrottle
 
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    throttle_classes = (WorkingHoursRateThrottle, ScopedRateThrottle)
+    throttle_classes = (ScopedRateThrottle,)
     pagination_class = LimitOffsetPagination
+    permission_classes = (IsOwnerOrReadOnly,)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def perform_update(self, serializer):
-        if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
-        super(PostViewSet, self).perform_update(serializer)
-
-    def perform_destroy(self, serializer):
-        if serializer.author != self.request.user:
-            raise PermissionDenied('Удаление чужого контента запрещено!')
-        super(PostViewSet, self).perform_destroy(serializer)
-
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
+    permission_classes = (IsOwnerOrReadOnly,)
 
     def perform_create(self, serializer):
         post_id = self.kwargs.get("post_id")
         post = get_object_or_404(Post, id=post_id)
         serializer.save(
             author=self.request.user, post=post)
-
-    def perform_update(self, serializer):
-        if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
-        super(CommentViewSet, self).perform_update(serializer)
-
-    def perform_destroy(self, serializer):
-        if serializer.author != self.request.user:
-            raise PermissionDenied('Удаление чужого контента запрещено!')
-        super(CommentViewSet, self).perform_destroy(serializer)
 
     def get_queryset(self):
         post_id = self.kwargs.get("post_id")
@@ -61,29 +43,20 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = GroupSerializer
 
 
-class GetPostViewSet(mixins.ListModelMixin,
-                     mixins.CreateModelMixin, viewsets.GenericViewSet):
-    pass
-
-
 class FollowViewSet(GetPostViewSet):
     serializer_class = FollowSerializer
-    permission_classes = (OwnerOnly,)
+    permission_classes = (IsOwner,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username', )
 
     def perform_create(self, serializer):
-        if not self.request.data or not self.request.data['following']:
-            raise BadRequest('Пустой запрос')
-        following = get_object_or_404(
-            User, username=self.request.data['following'])
-        follows = Follow.objects.filter(user=self.request.user,
-                                        following=following)
-        if follows:
-            raise BadRequest('Повторная подписка невозможна')
-        if following == self.request.user:
-            raise BadRequest('Подписка на себя невозможна')
-        serializer.save(user=self.request.user, following=following)
+        # if not self.request.data or not self.request.data['following']:
+        #    raise BadRequest('Пустой запрос')
+        # following = get_object_or_404(
+        #    User, username=self.request.data['following'])
+        # serializer.save(
+        #    user=self.request.user, following=self.request.data['following'])
+        serializer.save(user=self.request.user)
 
     def get_queryset(self):
         new_queryset = Follow.objects.filter(user=self.request.user)

@@ -1,8 +1,9 @@
 import base64
 
 from django.core.files.base import ContentFile
-from posts.models import Comment, Follow, Group, Post
+from posts.models import Comment, Follow, Group, Post, User
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -47,9 +48,27 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
-    following = serializers.StringRelatedField(read_only=True)
+    user = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault,
+        slug_field='username')
+    following = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        slug_field='username')
 
     class Meta:
         fields = ('user', 'following')
         model = Follow
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'following'),
+                message='Повторная подписка невозможна!'
+            )
+        ]
+
+    def validate_following(self, following):
+        if following == self.context['request'].user:
+            raise serializers.ValidationError('Подписка на себя невозможна!')
+        return following

@@ -16,7 +16,7 @@
 ### 2. Cоздать и активировать виртуальное окружение:
 
 ```
-    py -3.7 -m venv venv
+    python -m venv venv
     source venv/bin/activate
 ```
 
